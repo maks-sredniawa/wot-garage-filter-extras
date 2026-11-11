@@ -1,6 +1,6 @@
 <root>
-	<id>maksforge.example_mod</id>
+	<id>maksforge.garage_filter_extras</id>
 	<version>0.1.0</version>
-	<name>Example Mod</name>
-	<description>Writes a line to game.log when a battle loads.</description>
+	<name>Garage Filter Extras</name>
+	<description>Adds the garage filters the game is missing: hide rented tanks, and show only tanks that are not premium.</description>
 </root>

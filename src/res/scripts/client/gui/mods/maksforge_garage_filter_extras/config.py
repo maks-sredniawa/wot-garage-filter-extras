@@ -4,11 +4,13 @@ import os
 
 from debug_utils import LOG_CURRENT_EXCEPTION
 
-CONFIG_DIR = os.path.join('mods', 'configs', 'maksforge.example_mod')
+CONFIG_DIR = os.path.join('mods', 'configs', 'maksforge.garage_filter_extras')
 CONFIG_PATH = os.path.join(CONFIG_DIR, 'config.json')
 
 DEFAULTS = {
     'enabled': True,
+    'hideRented': True,
+    'onlyNonPremium': False,
 }
 
 
