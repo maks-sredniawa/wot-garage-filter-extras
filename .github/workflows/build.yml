@@ -1,0 +1,56 @@
+name: build
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container: python:2.7.18-buster
+    steps:
+      - name: Install zip
+        # Buster is end-of-life, so its packages are only on the archive mirror.
+        run: |
+          echo 'deb http://archive.debian.org/debian buster main' > /etc/apt/sources.list
+          apt-get -qq update
+          apt-get -qq install -y zip
+      - uses: actions/checkout@v5
+      - name: Test
+        run: python2.7 -m unittest discover -s tests -v
+      - name: Build
+        run: PYTHON27=python2.7 ./build.sh
+      - uses: actions/upload-artifact@v7
+        with:
+          name: wotmod
+          path: dist/*.wotmod
+          if-no-files-found: error
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/download-artifact@v8
+        with:
+          name: wotmod
+          path: dist
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version="$(sed -n 's:.*<version>\(.*\)</version>.*:\1:p' src/meta.xml)"
+          name="$(sed -n 's:.*<name>\(.*\)</name>.*:\1:p' src/meta.xml)"
+          if [ "v$version" != "$GITHUB_REF_NAME" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match src/meta.xml version $version"
+            exit 1
+          fi
+          gh release create "$GITHUB_REF_NAME" dist/*.wotmod \
+            --title "$name $version" \
+            --notes 'Copy the .wotmod file into `World_of_Tanks/mods/<game version>/`.' \
+            --generate-notes
