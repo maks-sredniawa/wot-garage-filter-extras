@@ -150,6 +150,40 @@ class SelectVehicle(object):
         self.filter.initialize()
 
 
+class ModsSettingsApi(object):
+    """Keeps the real API's rule: a template that differs from the stored one resets the saved settings to its values."""
+
+    def __init__(self):
+        self.templates = {}
+        self.settings = {}
+        self.callbacks = []
+
+    def setModTemplate(self, linkage, template, callback, buttonHandler=None):
+        if self.templates.get(linkage) != template:
+            self.templates[linkage] = template
+            values = dict((c['varName'], c['value']) for column in ('column1', 'column2') for c in template.get(column, []))
+            values['enabled'] = template['enabled']
+            self.settings[linkage] = values
+        self.callbacks.append(callback)
+        return dict(self.settings[linkage])
+
+    def updateModSettings(self, linkage, newSettings):
+        self.settings[linkage] = newSettings
+        for callback in list(self.callbacks):
+            callback(linkage, newSettings)
+
+
+def create_checkbox(text, varName, value, tooltip=None, tooltipIcon=None, button=None):
+    return {'type': 'CheckBox', 'text': text, 'varName': varName, 'value': value, 'tooltip': tooltip}
+
+
+def install_mods_settings_api():
+    api = ModsSettingsApi()
+    templates = module('gui.modsSettingsApi.templates', createCheckbox=create_checkbox)
+    module('gui.modsSettingsApi', g_modsSettingsApi=api, templates=templates)
+    return api
+
+
 def module(name, **attrs):
     mod = types.ModuleType(name)
     mod.__path__ = []

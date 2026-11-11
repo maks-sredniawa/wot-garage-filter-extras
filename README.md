@@ -9,11 +9,15 @@ The mod changes only which of your own tanks the main garage's carousel lists. I
 
 ## Install
 
-Copy `maksforge.garage_filter_extras_<version>.wotmod` into `World_of_Tanks/mods/<game version>/`. No other mods are needed.
+Copy `maksforge.garage_filter_extras_<version>.wotmod` into `World_of_Tanks/mods/<game version>/`. No other mods are needed: rented tanks are hidden from the first start.
+
+To switch the filters in the garage, also install [ModsSettingsAPI](https://github.com/IzeBerg/modssettingsapi) and the ModsList API it needs. Most modpacks include both.
 
 ## Settings
 
-The mod writes `mods/configs/maksforge.garage_filter_extras/config.json` the first time the client starts:
+With ModsSettingsAPI installed, open its window from the garage and use the **Garage Filter Extras** checkboxes: **Hide rented tanks** and **Non-premium only**. The carousel changes as soon as you apply.
+
+The settings live in `mods/configs/maksforge.garage_filter_extras/config.json`, which the mod writes the first time the client starts and the window keeps up to date:
 
 | Key | Default | Meaning |
 | --- | --- | --- |
@@ -21,7 +25,7 @@ The mod writes `mods/configs/maksforge.garage_filter_extras/config.json` the fir
 | `hideRented` | `true` | Hides rented tanks |
 | `onlyNonPremium` | `false` | Shows only tanks that are not premium |
 
-Restart the client after editing the file.
+Restart the client after editing the file by hand. The file wins over what the window showed before.
 
 ## Build
 

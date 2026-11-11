@@ -13,6 +13,7 @@ import game_stubs
 from game_stubs import RandomHangar, SelectVehicle, Vehicle, VehiclesFilterComponent
 
 CONFIG_PATH = os.path.join('mods', 'configs', 'maksforge.garage_filter_extras', 'config.json')
+LINKAGE = 'maksforge.garage_filter_extras'
 
 OWN = Vehicle(1)
 RENTED = Vehicle(2, isRented=True)
@@ -41,7 +42,8 @@ class ModTest(unittest.TestCase):
         shutil.rmtree(self.tmp)
 
     def write_config(self, settings):
-        os.makedirs(os.path.dirname(CONFIG_PATH))
+        if not os.path.isdir(os.path.dirname(CONFIG_PATH)):
+            os.makedirs(os.path.dirname(CONFIG_PATH))
         with open(CONFIG_PATH, 'w') as f:
             json.dump(settings, f)
 
@@ -157,6 +159,77 @@ class ModTest(unittest.TestCase):
         self.write_config({'enabled': True, 'typo': 1})
         config = importlib.import_module('gui.mods.maksforge_garage_filter_extras.config')
         self.assertEqual(config.load(), {'enabled': True, 'hideRented': True, 'onlyNonPremium': False})
+
+
+class SettingsWindowTest(ModTest):
+
+    def setUp(self):
+        super(SettingsWindowTest, self).setUp()
+        self.api = game_stubs.install_mods_settings_api()
+
+    def saved_config(self):
+        with open(CONFIG_PATH) as f:
+            return json.load(f)
+
+    def click(self, **changes):
+        settings = dict(self.api.settings[LINKAGE])
+        settings.update(changes)
+        self.api.updateModSettings(LINKAGE, settings)
+
+    def test_window_shows_the_config_values(self):
+        self.write_config({'hideRented': False, 'onlyNonPremium': True})
+        self.mod.init()
+        template = self.api.templates[LINKAGE]
+        self.assertEqual(template['modDisplayName'], 'Garage Filter Extras')
+        self.assertEqual([(c['varName'], c['text'], c['value']) for c in template['column1']],
+                         [('hideRented', 'Hide rented tanks', False), ('onlyNonPremium', 'Non-premium only', True)])
+
+    def test_ticking_a_box_refreshes_the_garage_and_saves_the_config(self):
+        self.mod.init()
+        every, _ = self.open_garage()
+        self.click(hideRented=False, onlyNonPremium=True)
+        self.assertEqual(self.shown(every), [1, 2, 6])
+        self.assertEqual(self.saved_config(), {'enabled': True, 'hideRented': False, 'onlyNonPremium': True})
+        self.assertEqual(self.log.exceptions, 0)
+
+    def test_turning_the_mod_off_in_the_window_shows_everything(self):
+        self.mod.init()
+        every, _ = self.open_garage()
+        self.click(enabled=False)
+        self.assertEqual(self.shown(every), [1, 2, 3, 4, 5, 6, 7])
+        self.assertFalse(self.saved_config()['enabled'])
+
+    def test_off_in_config_can_be_turned_back_on_in_the_window(self):
+        self.write_config({'enabled': False})
+        self.mod.init()
+        every, _ = self.open_garage()
+        self.assertEqual(self.shown(every), [1, 2, 3, 4, 5, 6, 7])
+        self.click(enabled=True)
+        self.assertEqual(self.shown(every), [1, 3, 5, 6, 7])
+
+    def test_edited_config_wins_over_the_windows_old_values(self):
+        self.mod.init()
+        self.click(hideRented=False)
+        self.mod.fini()
+        self.write_config({'hideRented': True})
+        self.mod.init()
+        every, _ = self.open_garage()
+        self.assertNotIn(RENTED.intCD, every.vehicles)
+        self.assertTrue(self.api.settings[LINKAGE]['hideRented'])
+
+    def test_other_mods_changes_are_ignored(self):
+        self.mod.init()
+        self.api.updateModSettings('someone.else', {'hideRented': False})
+        self.assertTrue(self.saved_config()['hideRented'])
+
+    def test_a_broken_window_still_leaves_the_filters_working(self):
+        def broken(*args, **kwargs):
+            raise RuntimeError('broken')
+        self.api.setModTemplate = broken
+        self.mod.init()
+        every, _ = self.open_garage()
+        self.assertNotIn(RENTED.intCD, every.vehicles)
+        self.assertEqual(self.log.exceptions, 1)
 
 
 if __name__ == '__main__':
