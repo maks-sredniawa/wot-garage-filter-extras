@@ -2,6 +2,7 @@ import { ModelObserver } from "../../libs/model.js";
 
 const MODEL_NAME = "maksforge_garage_filter_extras.FilterToggleView";
 const OURS_ATTR = "data-mfgfe-toggle";
+const LABEL = "Non-premium only";
 const SPECIALS_ROW = '[class*="FilterPopover_toggleContainer"]';
 const SPECIAL_ICON = '[class*="FilterPopover_specialsIcons"]';
 
@@ -34,9 +35,18 @@ function isUpscaled() {
     return parseFloat(getComputedStyle(document.documentElement).fontSize) > 1;
 }
 
+function playClickSound() {
+    try {
+        const played = engine.call("PlaySound", "play");
+        if (played && played.catch) played.catch(function () {});
+    } catch (e) {}
+}
+
 function buildToggle() {
     const toggle = el("mfgfe-toggle");
     toggle.setAttribute(OURS_ATTR, "nonPremium");
+    toggle.setAttribute("role", "button");
+    toggle.setAttribute("aria-label", LABEL);
     toggle.appendChild(el("mfgfe-border"));
     toggle.appendChild(el("mfgfe-background"));
     toggle.appendChild(el("mfgfe-bulb"));
@@ -46,9 +56,11 @@ function buildToggle() {
     toggle.appendChild(content);
     toggle.addEventListener("click", function (event) {
         event.stopPropagation();
-        try { engine.call("PlaySound", "play"); } catch (e) {}
+        playClickSound();
         send("onToggleNonPremium");
     });
+    toggle.addEventListener("mouseenter", function () { send("onShowTooltip"); });
+    toggle.addEventListener("mouseleave", function () { send("onHideTooltip"); });
     return toggle;
 }
 
@@ -61,6 +73,7 @@ function render(toggle) {
     const state = model.model || {};
     toggle.style.display = state.visible ? "" : "none";
     setClass(toggle, "mfgfe-toggle--on", !!state.onlyNonPremium);
+    toggle.setAttribute("aria-pressed", state.onlyNonPremium ? "true" : "false");
     setClass(toggle.querySelector(".mfgfe-icon"), "mfgfe-icon--upscale", isUpscaled());
 }
 

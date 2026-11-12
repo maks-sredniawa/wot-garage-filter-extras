@@ -44,6 +44,10 @@ def attach(view):
     view.show(dict(_settings))
 
 
+def detach(view):
+    _views.discard(view)
+
+
 def toggle_non_premium():
     if _on_change:
         _on_change[0]({'onlyNonPremium': not _settings.get('onlyNonPremium')})

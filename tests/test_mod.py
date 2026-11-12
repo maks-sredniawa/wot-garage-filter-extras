@@ -26,7 +26,7 @@ SHOP_PREMIUM = Vehicle(7, isPremium=True, inInventory=False)
 ALL = (OWN, RENTED, PREMIUM, RENTED_PREMIUM, WOT_PLUS, CLAN_WARS, SHOP_PREMIUM)
 
 
-class ModTest(unittest.TestCase):
+class ModFixture(unittest.TestCase):
 
     def setUp(self):
         self.cwd = os.getcwd()
@@ -55,6 +55,17 @@ class ModTest(unittest.TestCase):
 
     def shown(self, component):
         return sorted(component.vehicles)
+
+
+class WithoutOpenWGGamefaceTest(ModFixture):
+
+    def test_no_popup_toggle_without_openwg_gameface(self):
+        self.mod.init()
+        self.assertEqual(self.presenters, {})
+        self.assertEqual(self.log.errors, [])
+
+
+class ModTest(ModFixture):
 
     def test_first_start_writes_default_config(self):
         self.mod.init()
@@ -156,11 +167,6 @@ class ModTest(unittest.TestCase):
         self.assertNotIn(RENTED.intCD, every.vehicles)
         self.assertEqual(self.log.exceptions, 1)
 
-    def test_no_popup_toggle_without_openwg_gameface(self):
-        self.mod.init()
-        self.assertEqual(self.presenters, {})
-        self.assertEqual(self.log.errors, [])
-
     def test_unknown_config_keys_are_ignored(self):
         self.write_config({'enabled': True, 'typo': 1})
         config = importlib.import_module('gui.mods.maksforge_garage_filter_extras.config')
@@ -244,9 +250,6 @@ class PopupToggleTest(ModTest):
         super(PopupToggleTest, self).setUp()
         game_stubs.install_openwg_gameface()
 
-    def test_no_popup_toggle_without_openwg_gameface(self):
-        pass
-
     def open_popup_toggle(self):
         view = self.presenters[game_stubs.FILTER_TOGGLE_LAYOUT_ID]()
         view.load()
@@ -311,6 +314,33 @@ class PopupToggleTest(ModTest):
         self.assertEqual(len(self.log.errors), 1)
         self.assertNotIn(RENTED.intCD, every.vehicles)
 
+    def test_a_closed_popup_toggle_gets_no_more_updates(self):
+        self.mod.init()
+        view = self.open_popup_toggle()
+        view.destroy()
+        self.open_popup_toggle().viewModel.onToggleNonPremium()
+        self.assertFalse(view.viewModel.properties['onlyNonPremium'])
+        self.assertEqual(self.log.exceptions, 0)
+
+    def test_hovering_the_toggle_shows_its_tooltip(self):
+        self.mod.init()
+        view = self.open_popup_toggle()
+        view.viewModel.onShowTooltip()
+        self.assertEqual(game_stubs.tooltip_manager().shown, [(
+            "{HEADER}Non-premium only{/HEADER}{BODY}Shows only tanks that are not premium. "
+            "The opposite of the game's Premium filter, so don't turn both on.{/BODY}", 'INFO')])
+        view.viewModel.onHideTooltip()
+        self.assertEqual(game_stubs.tooltip_manager().hidden, 1)
+        self.assertEqual(self.log.exceptions, 0)
+
+    def test_a_broken_tooltip_manager_is_only_logged(self):
+        self.mod.init()
+        view = self.open_popup_toggle()
+        del sys.modules['helpers'].dependency.instance
+        view.viewModel.onShowTooltip()
+        view.viewModel.onHideTooltip()
+        self.assertEqual(self.log.exceptions, 2)
+
     def test_script_log_lines_reach_the_game_log(self):
         self.mod.init()
         view = self.open_popup_toggle()
@@ -325,9 +355,6 @@ class PopupAndWindowTest(SettingsWindowTest):
     def setUp(self):
         super(PopupAndWindowTest, self).setUp()
         game_stubs.install_openwg_gameface()
-
-    def test_no_popup_toggle_without_openwg_gameface(self):
-        pass
 
     def open_popup_toggle(self):
         view = self.presenters[game_stubs.FILTER_TOGGLE_LAYOUT_ID]()

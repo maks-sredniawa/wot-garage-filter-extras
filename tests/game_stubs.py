@@ -231,7 +231,13 @@ class ViewComponent(object):
         for event, handler in self._getEvents():
             event += handler
 
+    def destroy(self):
+        self._finalize()
+
     def _onLoading(self, *args, **kwargs):
+        pass
+
+    def _finalize(self):
         pass
 
     def _getEvents(self):
@@ -261,6 +267,45 @@ def gf_mod_inject(model, name, styles=None, scripts=None, modules=None):
                                                    'modules': modules or []})
 
 
+class ToolTipMgr(object):
+
+    def __init__(self):
+        self.shown = []
+        self.hidden = 0
+
+    def onCreateComplexTooltip(self, tooltipId, state):
+        self.shown.append((tooltipId, state))
+
+    def hide(self):
+        self.hidden += 1
+
+
+class App(object):
+
+    def __init__(self):
+        self.toolTipMgr = ToolTipMgr()
+
+    def getToolTipMgr(self):
+        return self.toolTipMgr
+
+
+class AppLoader(object):
+
+    def __init__(self):
+        self.app = App()
+
+    def getApp(self):
+        return self.app
+
+
+def make_tooltip(header=None, body=None, note=None, attention=None):
+    return '{HEADER}%s{/HEADER}{BODY}%s{/BODY}' % (header, body)
+
+
+def tooltip_manager():
+    return sys.modules['helpers'].dependency.instance(AppLoader).getApp().getToolTipMgr()
+
+
 def install_openwg_gameface():
     sys.modules['gui.impl.gen'].R.mods.ids[FILTER_TOGGLE_LAYOUT] = FILTER_TOGGLE_LAYOUT_ID
     module('openwg_gameface', gf_mod_inject=gf_mod_inject)
@@ -278,7 +323,8 @@ def install():
     """Replaces the game modules with fresh stubs and forgets every loaded mod module."""
     global ITEMS_CACHE
     for name in [name for name in sys.modules
-                 if name in ('gui', 'openwg_gameface', 'frameworks') or name.startswith(('gui.', 'frameworks.'))]:
+                 if name in ('gui', 'openwg_gameface', 'frameworks', 'helpers', 'skeletons')
+                 or name.startswith(('gui.', 'frameworks.', 'helpers.', 'skeletons.'))]:
         del sys.modules[name]
     log = Log()
     ITEMS_CACHE = ItemsCache()
@@ -300,4 +346,11 @@ def install():
     presenters = {}
     module('gui.shared')
     module('gui.shared.system_factory', registerDynamicRandomHangarPresenters=presenters.__setitem__)
+    module('gui.shared.utils')
+    module('gui.shared.utils.functions', makeTooltip=make_tooltip)
+    app_loader = AppLoader()
+    module('skeletons')
+    module('skeletons.gui')
+    module('skeletons.gui.app_loader', IAppLoader=AppLoader)
+    module('helpers', dependency=module('helpers.dependency', instance={AppLoader: app_loader}.__getitem__))
     return log, ITEMS_CACHE, presenters
