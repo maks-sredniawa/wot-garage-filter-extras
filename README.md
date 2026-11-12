@@ -1,6 +1,6 @@
 # Garage Filter Extras
 
-A World of Tanks mod that adds the garage filters the game is missing: hide rented tanks, and show only tanks that are not premium.
+A World of Tanks mod that adds what the game's garage filters lack: hiding rented WoT Plus tanks, which the game always shows, and showing only tanks that are not premium.
 
 - **Hide rented tanks:** every rented tank leaves the garage carousel, WoT Plus and Clan Wars tanks included. The game already hides most rentals behind its own *Rented* toggle, but always shows WoT Plus tanks. While this is on, that toggle has no rented tanks to bring back.
 - **Only tanks that are not premium:** the opposite of the game's own *Premium* filter. Don't turn both on at once, or the carousel is empty.

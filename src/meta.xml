@@ -2,5 +2,5 @@
 	<id>maksforge.garage_filter_extras</id>
 	<version>0.1.0</version>
 	<name>Garage Filter Extras</name>
-	<description>Adds the garage filters the game is missing: hide rented tanks, and show only tanks that are not premium.</description>
+	<description>Adds what the game's garage filters lack: hiding rented WoT Plus tanks, which the game always shows, and showing only tanks that are not premium.</description>
 </root>
