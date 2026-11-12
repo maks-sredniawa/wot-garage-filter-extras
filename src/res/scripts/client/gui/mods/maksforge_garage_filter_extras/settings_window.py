@@ -29,8 +29,8 @@ def _template(templates, settings):
         'column1': [
             templates.createCheckbox(
                 'Hide rented tanks', 'hideRented', settings['hideRented'],
-                tooltip='{HEADER}Hide rented tanks{/HEADER}{BODY}Rented tanks are not shown in the garage carousel. '
-                        'WoT Plus and Clan Wars tanks stay.{/BODY}'),
+                tooltip='{HEADER}Hide rented tanks{/HEADER}{BODY}Every rented tank leaves the garage carousel, '
+                        'WoT Plus and Clan Wars tanks too.{/BODY}'),
             templates.createCheckbox(
                 'Non-premium only', 'onlyNonPremium', settings['onlyNonPremium'],
                 tooltip="{HEADER}Non-premium only{/HEADER}{BODY}Shows only tanks that are not premium. "

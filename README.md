@@ -1,8 +1,8 @@
 # Garage Filter Extras
 
-A World of Tanks mod that adds the garage filters the game is missing: hide rented tanks, and show only tanks that are not premium.
+A World of Tanks mod that adds what the game's garage filters lack: hiding rented WoT Plus tanks, which the game always shows, and showing only tanks that are not premium.
 
-- **Hide rented tanks:** trial and event rentals leave the garage carousel. WoT Plus and Clan Wars tanks stay, the same as the game's own rented filter treats them. The game's new garage has no toggle for rented tanks, so they always show without this mod.
+- **Hide rented tanks:** every rented tank leaves the garage carousel, WoT Plus and Clan Wars tanks included. The game already hides most rentals behind its own *Rented* toggle, but always shows WoT Plus tanks. While this is on, that toggle has no rented tanks to bring back.
 - **Only tanks that are not premium:** the opposite of the game's own *Premium* filter. Don't turn both on at once, or the carousel is empty.
 
 The mod changes only which of your own tanks the main garage's carousel lists. It reads nothing in battle. Other garages (Onslaught, Frontline, events) are left as the game made them.
@@ -22,7 +22,7 @@ The settings live in `mods/configs/maksforge.garage_filter_extras/config.json`, 
 | Key | Default | Meaning |
 | --- | --- | --- |
 | `enabled` | `true` | Turns the mod off without uninstalling it |
-| `hideRented` | `true` | Hides rented tanks |
+| `hideRented` | `true` | Hides every rented tank, WoT Plus and Clan Wars ones too |
 | `onlyNonPremium` | `false` | Shows only tanks that are not premium |
 
 Restart the client after editing the file by hand. The file wins over what the window showed before.

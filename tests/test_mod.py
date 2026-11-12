@@ -63,15 +63,15 @@ class ModTest(unittest.TestCase):
     def test_hides_rented_tanks_by_default(self):
         self.mod.init()
         every, inventory = self.open_garage()
-        self.assertEqual(self.shown(every), [1, 3, 5, 6, 7])
-        self.assertEqual(self.shown(inventory), [1, 3, 5, 6])
+        self.assertEqual(self.shown(every), [1, 3, 7])
+        self.assertEqual(self.shown(inventory), [1, 3])
         self.assertEqual(self.log.exceptions, 0)
 
-    def test_keeps_wot_plus_and_clan_wars_tanks_like_the_games_own_filter(self):
+    def test_hides_wot_plus_and_clan_wars_rentals(self):
         self.mod.init()
         every, _ = self.open_garage()
-        self.assertIn(WOT_PLUS.intCD, every.vehicles)
-        self.assertIn(CLAN_WARS.intCD, every.vehicles)
+        self.assertNotIn(WOT_PLUS.intCD, every.vehicles)
+        self.assertNotIn(CLAN_WARS.intCD, every.vehicles)
 
     def test_only_non_premium(self):
         self.write_config({'hideRented': False, 'onlyNonPremium': True})
@@ -84,7 +84,7 @@ class ModTest(unittest.TestCase):
         self.write_config({'hideRented': True, 'onlyNonPremium': True})
         self.mod.init()
         every, _ = self.open_garage()
-        self.assertEqual(self.shown(every), [1, 6])
+        self.assertEqual(self.shown(every), [1])
 
     def test_keeps_the_games_collection_type(self):
         self.mod.init()
@@ -112,7 +112,7 @@ class ModTest(unittest.TestCase):
         every.onDiff += diffs.append
         self.garage.apply({'hideRented': False, 'onlyNonPremium': False})
         self.assertEqual(self.shown(every), [1, 2, 3, 4, 5, 6, 7])
-        self.assertEqual(diffs, [{2, 4}])
+        self.assertEqual(diffs, [{2, 4, 5, 6}])
 
     def test_disabled_in_config_changes_nothing(self):
         self.write_config({'enabled': False})
@@ -205,7 +205,7 @@ class SettingsWindowTest(ModTest):
         every, _ = self.open_garage()
         self.assertEqual(self.shown(every), [1, 2, 3, 4, 5, 6, 7])
         self.click(enabled=True)
-        self.assertEqual(self.shown(every), [1, 3, 5, 6, 7])
+        self.assertEqual(self.shown(every), [1, 3, 7])
 
     def test_edited_config_wins_over_the_windows_old_values(self):
         self.mod.init()
