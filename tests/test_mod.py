@@ -67,7 +67,7 @@ class ModTest(unittest.TestCase):
         self.assertEqual(self.shown(inventory), [1, 3])
         self.assertEqual(self.log.exceptions, 0)
 
-    def test_hides_wot_plus_and_clan_wars_rentals_the_game_always_shows(self):
+    def test_hides_wot_plus_and_clan_wars_rentals(self):
         self.mod.init()
         every, _ = self.open_garage()
         self.assertNotIn(WOT_PLUS.intCD, every.vehicles)
