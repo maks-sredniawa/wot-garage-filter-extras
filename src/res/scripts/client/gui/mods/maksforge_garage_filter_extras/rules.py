@@ -9,7 +9,4 @@ def is_hidden(vehicle, settings):
 
 
 def _is_rental(vehicle):
-    # Matches the game's own rented filter, which keeps WoT Plus and Clan Wars tanks.
-    return (getattr(vehicle, 'isRented', False)
-            and not getattr(vehicle, 'isWotPlus', False)
-            and not getattr(vehicle, 'isOnlyForClanWarsBattles', False))
+    return getattr(vehicle, 'isRented', False)
