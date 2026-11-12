@@ -11,11 +11,16 @@ The mod changes only which of your own tanks the main garage's carousel lists. I
 
 Copy `maksforge.garage_filter_extras_<version>.wotmod` into `World_of_Tanks/mods/<game version>/`. No other mods are needed: rented tanks are hidden from the first start.
 
-To switch the filters in the garage, also install [ModsSettingsAPI](https://github.com/IzeBerg/modssettingsapi) and the ModsList API it needs. Most modpacks include both.
+To switch the filters in the garage, also install either or both of these. Most modpacks include them:
+
+- [OpenWG Gameface](https://gitlab.com/openwg/wot.gameface) adds a **Non-premium** toggle to the garage's own filter popup, at the end of the *Special* row.
+- [ModsSettingsAPI](https://github.com/IzeBerg/modssettingsapi) and the ModsList API it needs give both filters a settings window.
 
 ## Settings
 
-With ModsSettingsAPI installed, open its window from the garage and use the **Garage Filter Extras** checkboxes: **Hide rented tanks** and **Non-premium only**. The carousel changes as soon as you apply.
+With OpenWG Gameface installed, open the garage's filter popup and click the crossed-out Premium badge at the end of the *Special* row. The carousel changes at once. The popup's own *Reset* button leaves this toggle as it is.
+
+With ModsSettingsAPI installed, open its window from the garage and use the **Garage Filter Extras** checkboxes: **Hide rented tanks** and **Non-premium only**. The carousel changes as soon as you apply. The popup toggle and the window stay in step.
 
 The settings live in `mods/configs/maksforge.garage_filter_extras/config.json`, which the mod writes the first time the client starts and the window keeps up to date:
 
