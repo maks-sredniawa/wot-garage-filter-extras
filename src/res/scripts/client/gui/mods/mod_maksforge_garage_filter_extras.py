@@ -1,15 +1,17 @@
 from debug_utils import LOG_CURRENT_EXCEPTION
 
 _settings = {}
+_views = {'window': False, 'popup': False}
 
 
 def init():
     try:
         from gui.mods.maksforge_garage_filter_extras import config, garage
         _settings.update(config.load())
-        has_window = _register_window()
-        if _settings['enabled'] or has_window:
+        _views['window'] = _register_window()
+        if _settings['enabled'] or _views['window']:
             garage.install(dict(_settings))
+            _views['popup'] = _install_popup()
     except Exception:
         LOG_CURRENT_EXCEPTION()
 
@@ -26,13 +28,22 @@ def fini():
 def _register_window():
     try:
         from gui.mods.maksforge_garage_filter_extras import settings_window
-        return settings_window.register(dict(_settings), _on_window_change)
+        return settings_window.register(dict(_settings), _on_change)
     except Exception:
         LOG_CURRENT_EXCEPTION()
         return False
 
 
-def _on_window_change(new_settings):
+def _install_popup():
+    try:
+        from gui.mods.maksforge_garage_filter_extras import popup
+        return popup.install(dict(_settings), _on_change)
+    except Exception:
+        LOG_CURRENT_EXCEPTION()
+        return False
+
+
+def _on_change(new_settings):
     if not _settings:
         return
     try:
@@ -42,5 +53,14 @@ def _on_window_change(new_settings):
         _settings.update(new_settings)
         config.save(dict(_settings))
         garage.apply(dict(_settings))
+        _show_everywhere()
     except Exception:
         LOG_CURRENT_EXCEPTION()
+
+
+def _show_everywhere():
+    from gui.mods.maksforge_garage_filter_extras import popup, settings_window
+    if _views['window']:
+        settings_window.show(dict(_settings))
+    if _views['popup']:
+        popup.show(dict(_settings))

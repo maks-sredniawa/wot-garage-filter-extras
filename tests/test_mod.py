@@ -2,6 +2,7 @@
 import importlib
 import json
 import os
+import re
 import shutil
 import sys
 import tempfile
@@ -25,13 +26,13 @@ SHOP_PREMIUM = Vehicle(7, isPremium=True, inInventory=False)
 ALL = (OWN, RENTED, PREMIUM, RENTED_PREMIUM, WOT_PLUS, CLAN_WARS, SHOP_PREMIUM)
 
 
-class ModTest(unittest.TestCase):
+class ModFixture(unittest.TestCase):
 
     def setUp(self):
         self.cwd = os.getcwd()
         self.tmp = tempfile.mkdtemp()
         os.chdir(self.tmp)
-        self.log, self.cache = game_stubs.install()
+        self.log, self.cache, self.presenters = game_stubs.install()
         self.cache.items.add(*ALL)
         self.mod = importlib.import_module('gui.mods.mod_maksforge_garage_filter_extras')
         self.garage = importlib.import_module('gui.mods.maksforge_garage_filter_extras.garage')
@@ -54,6 +55,17 @@ class ModTest(unittest.TestCase):
 
     def shown(self, component):
         return sorted(component.vehicles)
+
+
+class WithoutOpenWGGamefaceTest(ModFixture):
+
+    def test_no_popup_toggle_without_openwg_gameface(self):
+        self.mod.init()
+        self.assertEqual(self.presenters, {})
+        self.assertEqual(self.log.errors, [])
+
+
+class ModTest(ModFixture):
 
     def test_first_start_writes_default_config(self):
         self.mod.init()
@@ -230,6 +242,183 @@ class SettingsWindowTest(ModTest):
         every, _ = self.open_garage()
         self.assertNotIn(RENTED.intCD, every.vehicles)
         self.assertEqual(self.log.exceptions, 1)
+
+
+class PopupToggleTest(ModTest):
+
+    def setUp(self):
+        super(PopupToggleTest, self).setUp()
+        game_stubs.install_openwg_gameface()
+
+    def open_popup_toggle(self):
+        view = self.presenters[game_stubs.FILTER_TOGGLE_LAYOUT_ID]()
+        view.load()
+        return view
+
+    def toggle_state(self, view):
+        return dict((key, view.viewModel.properties[key]) for key in ('visible', 'onlyNonPremium'))
+
+    def saved_config(self):
+        with open(CONFIG_PATH) as f:
+            return json.load(f)
+
+    def test_registers_the_toggle_with_the_garage(self):
+        self.mod.init()
+        view = self.open_popup_toggle()
+        self.assertEqual(view.layoutID, game_stubs.FILTER_TOGGLE_LAYOUT_ID)
+        self.assertEqual(self.toggle_state(view), {'visible': True, 'onlyNonPremium': False})
+
+    def test_loads_its_script_and_styles_into_the_garage(self):
+        self.mod.init()
+        inject = self.open_popup_toggle().viewModel.properties['ModInjectModel']
+        self.assertEqual(inject['name'], 'maksforge_garage_filter_extras.FilterToggleView')
+        urls = inject['styles'] + inject['modules']
+        self.assertEqual([url.rsplit('/', 1)[1] for url in urls], ['FilterToggleView.css', 'FilterToggleView.js'])
+        for url in urls:
+            self.assertTrue(AssetsTest.shipped(url), url)
+
+    def test_clicking_the_toggle_shows_only_non_premium_tanks(self):
+        self.mod.init()
+        every, _ = self.open_garage()
+        view = self.open_popup_toggle()
+        view.viewModel.onToggleNonPremium()
+        self.assertEqual(self.shown(every), [1])
+        self.assertTrue(self.saved_config()['onlyNonPremium'])
+        self.assertEqual(self.toggle_state(view), {'visible': True, 'onlyNonPremium': True})
+
+    def test_clicking_it_again_brings_premium_tanks_back(self):
+        self.mod.init()
+        every, _ = self.open_garage()
+        view = self.open_popup_toggle()
+        view.viewModel.onToggleNonPremium()
+        view.viewModel.onToggleNonPremium()
+        self.assertEqual(self.shown(every), [1, 3, 7])
+        self.assertFalse(self.saved_config()['onlyNonPremium'])
+        self.assertFalse(view.viewModel.properties['onlyNonPremium'])
+
+    def test_a_reopened_garage_shows_the_saved_state(self):
+        self.write_config({'onlyNonPremium': True})
+        self.mod.init()
+        self.assertTrue(self.open_popup_toggle().viewModel.properties['onlyNonPremium'])
+
+    def test_off_in_config_adds_no_toggle(self):
+        self.write_config({'enabled': False})
+        self.mod.init()
+        self.assertEqual(self.presenters, {})
+
+    def test_stays_off_when_the_game_has_no_layout_for_it(self):
+        sys.modules['gui.impl.gen'].R.mods.ids.clear()
+        self.mod.init()
+        every, _ = self.open_garage()
+        self.assertEqual(self.presenters, {})
+        self.assertEqual(len(self.log.errors), 1)
+        self.assertNotIn(RENTED.intCD, every.vehicles)
+
+    def test_a_closed_popup_toggle_gets_no_more_updates(self):
+        self.mod.init()
+        view = self.open_popup_toggle()
+        view.destroy()
+        self.open_popup_toggle().viewModel.onToggleNonPremium()
+        self.assertFalse(view.viewModel.properties['onlyNonPremium'])
+        self.assertEqual(self.log.exceptions, 0)
+
+    def test_hovering_the_toggle_shows_its_tooltip(self):
+        self.mod.init()
+        view = self.open_popup_toggle()
+        view.viewModel.onShowTooltip()
+        self.assertEqual(game_stubs.tooltip_manager().shown, [(
+            "{HEADER}Non-premium only{/HEADER}{BODY}Shows only tanks that are not premium. "
+            "The opposite of the game's Premium filter, so don't turn both on.{/BODY}", 'INFO')])
+        view.viewModel.onHideTooltip()
+        self.assertEqual(game_stubs.tooltip_manager().hidden, 1)
+        self.assertEqual(game_stubs.tooltip_manager().released, [None])
+        self.assertEqual(self.log.exceptions, 0)
+
+    def test_closing_the_popup_under_the_pointer_hides_the_tooltip(self):
+        self.mod.init()
+        view = self.open_popup_toggle()
+        view.viewModel.onShowTooltip()
+        view.destroy()
+        self.assertEqual(game_stubs.tooltip_manager().hidden, 1)
+
+    def test_closing_the_popup_without_a_tooltip_hides_nothing(self):
+        self.mod.init()
+        view = self.open_popup_toggle()
+        view.viewModel.onShowTooltip()
+        view.viewModel.onHideTooltip()
+        view.destroy()
+        self.assertEqual(game_stubs.tooltip_manager().hidden, 1)
+
+    def test_a_broken_tooltip_manager_is_only_logged(self):
+        self.mod.init()
+        view = self.open_popup_toggle()
+        del sys.modules['helpers'].dependency.instance
+        view.viewModel.onShowTooltip()
+        view.viewModel.onHideTooltip()
+        self.assertEqual(self.log.exceptions, 2)
+
+    def test_script_log_lines_reach_the_game_log(self):
+        self.mod.init()
+        view = self.open_popup_toggle()
+        view.viewModel.onJsLog({'level': 'info', 'msg': 'toggle added'})
+        view.viewModel.onJsLog({'level': 'error', 'msg': 'start failed'})
+        self.assertTrue(self.log.notes[-1].endswith('[JS] toggle added'))
+        self.assertTrue(self.log.errors[-1].endswith('[JS] start failed'))
+
+
+class PopupAndWindowTest(SettingsWindowTest):
+
+    def setUp(self):
+        super(PopupAndWindowTest, self).setUp()
+        game_stubs.install_openwg_gameface()
+
+    def open_popup_toggle(self):
+        view = self.presenters[game_stubs.FILTER_TOGGLE_LAYOUT_ID]()
+        view.load()
+        return view
+
+    def test_a_popup_click_ticks_the_window_box(self):
+        self.mod.init()
+        self.open_popup_toggle().viewModel.onToggleNonPremium()
+        self.assertTrue(self.api.settings[LINKAGE]['onlyNonPremium'])
+        self.assertEqual(self.log.exceptions, 0)
+
+    def test_a_window_change_updates_the_popup_toggle(self):
+        self.mod.init()
+        view = self.open_popup_toggle()
+        self.click(onlyNonPremium=True)
+        self.assertTrue(view.viewModel.properties['onlyNonPremium'])
+
+    def test_turning_the_mod_off_in_the_window_hides_the_toggle(self):
+        self.mod.init()
+        view = self.open_popup_toggle()
+        self.click(enabled=False)
+        self.assertFalse(view.viewModel.properties['visible'])
+
+
+class AssetsTest(unittest.TestCase):
+    """Every coui:// and img:// path the toggle loads must ship in the .wotmod."""
+
+    RES = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'src', 'res')
+    VIEW = os.path.join(RES, 'gui', 'gameface', 'mods', 'maksforge_garage_filter_extras', 'FilterToggleView')
+
+    @classmethod
+    def shipped(cls, url):
+        return os.path.isfile(os.path.join(cls.RES, *url.split('://', 1)[1].split('/')))
+
+    def test_the_layout_points_at_a_shipped_page(self):
+        with open(os.path.join(self.RES, 'gui', 'gen_resources', 'maksforge_garage_filter_extras.json')) as f:
+            layout, = json.load(f)
+        self.assertEqual(layout['id'], 'R.' + '.'.join(game_stubs.FILTER_TOGGLE_LAYOUT))
+        self.assertTrue(self.shipped(layout['path']))
+
+    def test_styles_use_shipped_or_game_images(self):
+        with open(os.path.join(self.VIEW, 'FilterToggleView.css')) as f:
+            urls = re.findall(r'url\((img://[^)]+)\)', f.read())
+        ours = [url for url in urls if 'maksforge_garage_filter_extras' in url]
+        self.assertEqual(len(ours), 2)
+        for url in ours:
+            self.assertTrue(self.shipped(url), url)
 
 
 if __name__ == '__main__':

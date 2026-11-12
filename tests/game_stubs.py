@@ -1,4 +1,5 @@
 """Stand-ins for the game modules a mod imports, so tests run outside the client (Python 2.7 or 3)."""
+import contextlib
 import os
 import sys
 import types
@@ -184,6 +185,136 @@ def install_mods_settings_api():
     return api
 
 
+class ViewModel(object):
+
+    def __init__(self, properties=0, commands=0):
+        self.properties = {}
+        self.order = []
+        self._initialize()
+
+    def _initialize(self):
+        pass
+
+    def _addBoolProperty(self, name, value):
+        self.order.append(name)
+        self.properties[name] = value
+
+    def _getBool(self, index):
+        return self.properties[self.order[index]]
+
+    def _setBool(self, index, value):
+        self.properties[self.order[index]] = value
+
+    def _addCommand(self, name):
+        return Event()
+
+    def _addViewModelProperty(self, name, model):
+        self.properties[name] = model
+
+    @contextlib.contextmanager
+    def transaction(self):
+        yield self
+
+
+class ViewComponent(object):
+
+    def __init__(self, layoutID=0, model=ViewModel):
+        self.layoutID = layoutID
+        self.__model = model()
+
+    def getViewModel(self):
+        return self.__model
+
+    def load(self):
+        """Stands in for the garage loading this child: the game calls _onLoading, then subscribes _getEvents."""
+        self._onLoading()
+        for event, handler in self._getEvents():
+            event += handler
+
+    def destroy(self):
+        self._finalize()
+
+    def _onLoading(self, *args, **kwargs):
+        pass
+
+    def _finalize(self):
+        pass
+
+    def _getEvents(self):
+        return ()
+
+
+class ResNode(object):
+    """Mirrors R.<a>.dyn(<b>)...(): calling a node gives its resource id, or -1 when the game has none."""
+
+    def __init__(self, ids, path):
+        self.ids = ids
+        self.path = path
+
+    def dyn(self, key):
+        return ResNode(self.ids, self.path + (key,))
+
+    def __call__(self):
+        return self.ids.get(self.path, -1)
+
+
+FILTER_TOGGLE_LAYOUT = ('mods', 'maksforge_garage_filter_extras', 'views', 'FilterToggleView')
+FILTER_TOGGLE_LAYOUT_ID = 90210
+
+
+def gf_mod_inject(model, name, styles=None, scripts=None, modules=None):
+    model._addViewModelProperty('ModInjectModel', {'name': name, 'styles': styles or [], 'scripts': scripts or [],
+                                                   'modules': modules or []})
+
+
+class ToolTipMgr(object):
+
+    def __init__(self):
+        self.shown = []
+        self.hidden = 0
+        self.released = []
+
+    def onCreateComplexTooltip(self, tooltipId, state):
+        self.shown.append((tooltipId, state))
+
+    def hide(self):
+        self.hidden += 1
+
+    def onHideTooltip(self, tooltipId):
+        self.released.append(tooltipId)
+
+
+class App(object):
+
+    def __init__(self):
+        self.toolTipMgr = ToolTipMgr()
+
+    def getToolTipMgr(self):
+        return self.toolTipMgr
+
+
+class AppLoader(object):
+
+    def __init__(self):
+        self.app = App()
+
+    def getApp(self):
+        return self.app
+
+
+def make_tooltip(header=None, body=None, note=None, attention=None):
+    return '{HEADER}%s{/HEADER}{BODY}%s{/BODY}' % (header, body)
+
+
+def tooltip_manager():
+    return sys.modules['helpers'].dependency.instance(AppLoader).getApp().getToolTipMgr()
+
+
+def install_openwg_gameface():
+    sys.modules['gui.impl.gen'].R.mods.ids[FILTER_TOGGLE_LAYOUT] = FILTER_TOGGLE_LAYOUT_ID
+    module('openwg_gameface', gf_mod_inject=gf_mod_inject)
+
+
 def module(name, **attrs):
     mod = types.ModuleType(name)
     mod.__path__ = []
@@ -195,7 +326,9 @@ def module(name, **attrs):
 def install():
     """Replaces the game modules with fresh stubs and forgets every loaded mod module."""
     global ITEMS_CACHE
-    for name in [name for name in sys.modules if name == 'gui' or name.startswith('gui.')]:
+    for name in [name for name in sys.modules
+                 if name in ('gui', 'openwg_gameface', 'frameworks', 'helpers', 'skeletons')
+                 or name.startswith(('gui.', 'frameworks.', 'helpers.', 'skeletons.'))]:
         del sys.modules[name]
     log = Log()
     ITEMS_CACHE = ItemsCache()
@@ -207,4 +340,21 @@ def install():
         module(name)
     module('gui.impl.lobby.hangar.base.vehicles_filter_component', VehiclesFilterComponent=VehiclesFilterComponent)
     module('gui.impl.lobby.hangar.random.random_hangar', RandomHangar=RandomHangar)
-    return log, ITEMS_CACHE
+    module('frameworks')
+    module('frameworks.wulf', ViewModel=ViewModel)
+    module('gui.impl.pub')
+    module('gui.impl.pub.view_component', ViewComponent=ViewComponent)
+    resources = types.ModuleType('R')
+    resources.mods = ResNode({}, ('mods',))
+    module('gui.impl.gen', R=resources)
+    presenters = {}
+    module('gui.shared')
+    module('gui.shared.system_factory', registerDynamicRandomHangarPresenters=presenters.__setitem__)
+    module('gui.shared.utils')
+    module('gui.shared.utils.functions', makeTooltip=make_tooltip)
+    app_loader = AppLoader()
+    module('skeletons')
+    module('skeletons.gui')
+    module('skeletons.gui.app_loader', IAppLoader=AppLoader)
+    module('helpers', dependency=module('helpers.dependency', instance={AppLoader: app_loader}.__getitem__))
+    return log, ITEMS_CACHE, presenters
