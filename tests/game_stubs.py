@@ -272,12 +272,16 @@ class ToolTipMgr(object):
     def __init__(self):
         self.shown = []
         self.hidden = 0
+        self.released = []
 
     def onCreateComplexTooltip(self, tooltipId, state):
         self.shown.append((tooltipId, state))
 
     def hide(self):
         self.hidden += 1
+
+    def onHideTooltip(self, tooltipId):
+        self.released.append(tooltipId)
 
 
 class App(object):

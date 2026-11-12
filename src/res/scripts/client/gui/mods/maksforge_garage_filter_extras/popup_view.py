@@ -44,6 +44,7 @@ class FilterToggleView(ViewComponent):
 
     def __init__(self, layoutID):
         super(FilterToggleView, self).__init__(layoutID=layoutID, model=FilterToggleModel)
+        self.__tooltipShown = False
 
     @property
     def viewModel(self):
@@ -60,6 +61,8 @@ class FilterToggleView(ViewComponent):
 
     def _finalize(self):
         popup.detach(self)
+        if self.__tooltipShown:
+            self.__onHideTooltip()
         super(FilterToggleView, self)._finalize()
 
     def _getEvents(self):
@@ -78,12 +81,16 @@ class FilterToggleView(ViewComponent):
         try:
             from gui.shared.utils.functions import makeTooltip
             _tooltipManager().onCreateComplexTooltip(makeTooltip(header=TOOLTIP_HEADER, body=TOOLTIP_BODY), 'INFO')
+            self.__tooltipShown = True
         except Exception:
             LOG_CURRENT_EXCEPTION()
 
     def __onHideTooltip(self, *args):
+        self.__tooltipShown = False
         try:
-            _tooltipManager().hide()
+            manager = _tooltipManager()
+            manager.hide()
+            manager.onHideTooltip(None)
         except Exception:
             LOG_CURRENT_EXCEPTION()
 

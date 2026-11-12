@@ -331,7 +331,23 @@ class PopupToggleTest(ModTest):
             "The opposite of the game's Premium filter, so don't turn both on.{/BODY}", 'INFO')])
         view.viewModel.onHideTooltip()
         self.assertEqual(game_stubs.tooltip_manager().hidden, 1)
+        self.assertEqual(game_stubs.tooltip_manager().released, [None])
         self.assertEqual(self.log.exceptions, 0)
+
+    def test_closing_the_popup_under_the_pointer_hides_the_tooltip(self):
+        self.mod.init()
+        view = self.open_popup_toggle()
+        view.viewModel.onShowTooltip()
+        view.destroy()
+        self.assertEqual(game_stubs.tooltip_manager().hidden, 1)
+
+    def test_closing_the_popup_without_a_tooltip_hides_nothing(self):
+        self.mod.init()
+        view = self.open_popup_toggle()
+        view.viewModel.onShowTooltip()
+        view.viewModel.onHideTooltip()
+        view.destroy()
+        self.assertEqual(game_stubs.tooltip_manager().hidden, 1)
 
     def test_a_broken_tooltip_manager_is_only_logged(self):
         self.mod.init()
