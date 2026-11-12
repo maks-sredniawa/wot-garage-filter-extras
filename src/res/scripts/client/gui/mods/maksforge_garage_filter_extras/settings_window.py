@@ -1,6 +1,8 @@
 LINKAGE = 'maksforge.garage_filter_extras'
 KEYS = ('enabled', 'hideRented', 'onlyNonPremium')
 
+_shown = {}
+
 
 def register(settings, on_change):
     try:
@@ -13,13 +15,19 @@ def register(settings, on_change):
             on_change(dict((key, new_settings[key]) for key in KEYS if key in new_settings))
 
     shown = g_modsSettingsApi.setModTemplate(LINKAGE, _template(templates, settings), callback) or {}
+    _shown.clear()
+    _shown.update(shown)
     # The API keeps its saved values while the template is unchanged, so a config edited back to the
     # template's values would otherwise lose to them.
     if any(shown.get(key) != settings[key] for key in KEYS):
-        synced = dict(shown)
-        synced.update((key, settings[key]) for key in KEYS)
-        g_modsSettingsApi.updateModSettings(LINKAGE, synced)
+        show(settings)
     return True
+
+
+def show(settings):
+    from gui.modsSettingsApi import g_modsSettingsApi
+    _shown.update((key, settings[key]) for key in KEYS)
+    g_modsSettingsApi.updateModSettings(LINKAGE, dict(_shown))
 
 
 def _template(templates, settings):

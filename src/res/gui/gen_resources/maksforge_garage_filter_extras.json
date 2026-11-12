@@ -1,0 +1,11 @@
+[
+  {
+    "type": "Layout",
+    "id": "R.mods.maksforge_garage_filter_extras.views.FilterToggleView",
+    "path": "coui://gui/gameface/mods/maksforge_garage_filter_extras/FilterToggleView/FilterToggleView.html",
+    "parameters": {
+      "entrance": "FilterToggleView",
+      "impl": "gameface"
+    }
+  }
+]
